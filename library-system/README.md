@@ -51,7 +51,7 @@ Books are stored in MongoDB, so refreshing the page or restarting the normal bac
 
 - **Overview:** collection totals, available/borrowed copies, overdue books, recent additions, current loans.
 - **Inventory:** search title, author, ISBN or shelf; filter category/status; paginate; edit copy details.
-- **Add a book:** title, author, optional ISBN, category and shelf. Leave ISBN blank when the book has none; if entered, it must be valid. One record is one physical copy; multiple copies may share an ISBN. Shelf location is the physical place to find the copy, such as `A-01` for Shelf A, section 1. Use your library's own labels consistently.
+- **Add a book:** title, author, optional ISBN, category and shelf. Leave ISBN blank when the book has none; if entered, it must be valid. One record is one physical copy; multiple copies may share an ISBN. Choose Shelf A–Z and Section 01–10 from dropdowns; the app saves a location such as `B-03` for Shelf B, section 3. Multiple copies may share a location. Older custom location labels are retained when editing until you select a new shelf.
 - **Check out:** choose an available book; enter borrower name, student/member ID, and a due date.
 - **Return:** confirm the return from inventory or borrowing page. The loan remains in history.
 - **Delete:** unused copies can be deleted after confirmation. Copies with any loan history stay in the catalog to preserve records.

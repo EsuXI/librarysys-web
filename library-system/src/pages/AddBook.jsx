@@ -4,6 +4,11 @@ import { ArrowLeft, BookOpen, Check, Info } from "lucide-react";
 import api, { errorMessage } from "../api";
 import { PageHeading, ErrorState, Loading } from "../components/UI";
 import { categories, copyCode, formatDate } from "../utils";
+const shelfLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const sections = Array.from({ length: 10 }, (_, index) =>
+  String(index + 1).padStart(2, "0"),
+);
+const locationPattern = /^([A-Z])-(0[1-9]|10)$/;
 export default function AddBook() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -12,12 +17,15 @@ export default function AddBook() {
     author: "",
     isbn: "",
     category: "Technology",
-    shelf: "",
+    shelf: "A-01",
   });
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(Boolean(id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const location = form.shelf.match(locationPattern);
+  const existingLocation =
+    book && !locationPattern.test(book.shelf) ? book.shelf : null;
   useEffect(() => {
     let active = true;
     if (id)
@@ -134,7 +142,7 @@ export default function AddBook() {
                 ISBN-10 or ISBN-13.
               </small>
             </div>
-            <div className="two-fields">
+            <div>
               <div className="field">
                 <label htmlFor="category">Category</label>
                 <select
@@ -149,22 +157,61 @@ export default function AddBook() {
                   ))}
                 </select>
               </div>
-              <div className="field">
-                <label htmlFor="shelf">Shelf location</label>
-                <input
-                  id="shelf"
-                  name="shelf"
-                  className="form-control"
-                  required
-                  maxLength={40}
-                  placeholder="e.g. A-01 or Shelf A, section 1"
-                  value={form.shelf}
-                  onChange={change}
-                />
-                <small>
-                  Where the book is kept. Use your library’s own shelf labels.
-                </small>
+              <div className="two-fields">
+                <div className="field">
+                  <label htmlFor="shelfLetter">Shelf</label>
+                  <select
+                    id="shelfLetter"
+                    className="form-select"
+                    value={location ? location[1] : "existing"}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        shelf:
+                          e.target.value === "existing"
+                            ? existingLocation
+                            : `${e.target.value}-${location?.[2] || "01"}`,
+                      })
+                    }
+                  >
+                    {existingLocation && (
+                      <option value="existing">
+                        Keep current: {existingLocation}
+                      </option>
+                    )}
+                    {shelfLetters.map((letter) => (
+                      <option value={letter} key={letter}>
+                        Shelf {letter}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="section">Section</label>
+                  <select
+                    id="section"
+                    className="form-select"
+                    disabled={!location}
+                    value={location?.[2] || "01"}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        shelf: `${location[1]}-${e.target.value}`,
+                      })
+                    }
+                  >
+                    {sections.map((section) => (
+                      <option value={section} key={section}>
+                        Section {section}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+              <p className="subtitle mb-4">
+                Location: <strong>{form.shelf}</strong>. For example, B-03 means
+                Shelf B, section 3.
+              </p>
             </div>
             <div className="form-footer">
               <Link to="/inventory" className="btn btn-light">
@@ -191,6 +238,11 @@ export default function AddBook() {
             <p>
               New copies are available immediately. Check them out from the
               inventory when a reader borrows them.
+            </p>
+            <p>
+              Choose a shelf from A to Z and a section from 01 to 10. These are
+              catalog labels; you can label physical shelves the same way.
+              Multiple books can share one location.
             </p>
             <p>
               The ISBN identifies the edition. The copy ID identifies the
