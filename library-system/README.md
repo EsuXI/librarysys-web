@@ -51,7 +51,7 @@ Books are stored in MongoDB, so refreshing the page or restarting the normal bac
 
 - **Overview:** collection totals, available/borrowed copies, overdue books, recent additions, current loans.
 - **Inventory:** search title, author, ISBN or shelf; filter category/status; paginate; edit copy details.
-- **Add a book:** title, author, valid ISBN, category and shelf. One record is one physical copy; multiple copies may share an ISBN.
+- **Add a book:** title, author, optional ISBN, category and shelf. Leave ISBN blank when the book has none; if entered, it must be valid. One record is one physical copy; multiple copies may share an ISBN. Shelf location is the physical place to find the copy, such as `A-01` for Shelf A, section 1. Use your library's own labels consistently.
 - **Check out:** choose an available book; enter borrower name, student/member ID, and a due date.
 - **Return:** confirm the return from inventory or borrowing page. The loan remains in history.
 - **Delete:** unused copies can be deleted after confirmation. Copies with any loan history stay in the catalog to preserve records.
@@ -134,7 +134,7 @@ Connect this GitHub repository in Vercel's Git settings. Pushes to `main` then d
 - **MongoDB connection error:** check the service/Atlas URI, credentials, and Atlas network access settings.
 - **JWT secret error:** replace the placeholder with a random value of at least 32 characters.
 - **Port in use:** stop the other process using 5000/5173. Run only one backend at a time.
-- **Invalid ISBN:** use a real ISBN-10/ISBN-13; its check digit is validated. Spaces/hyphens are accepted.
+- **Invalid ISBN:** leave the field blank if there is no ISBN. If entered, use a real ISBN-10/ISBN-13; its check digit is validated. Spaces/hyphens are accepted.
 - **Seed refused:** sample seeding only works on an empty database; no existing data is overwritten.
 
 Read PROJECT-NOTES.md for the requirement mapping, scope, lesson connections, and remaining academic submission artifacts.

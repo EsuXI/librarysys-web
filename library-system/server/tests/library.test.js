@@ -99,6 +99,42 @@ test("validates book fields and ignores client-supplied status", async () => {
   assert.equal(response.body.loans.length, 0);
   assert.equal(response.body.isbn, "9780135957059");
 });
+test("supports books without ISBN and clearing an existing ISBN", async () => {
+  for (const isbn of [undefined, null, "", "   "]) {
+    const created = await request(app)
+      .post("/api/books")
+      .set(auth())
+      .send({ ...fields, isbn })
+      .expect(201);
+    assert.equal(created.body.isbn, "");
+    const id = created.body._id;
+    const withIsbn = await request(app)
+      .put(`/api/books/${id}`)
+      .set(auth())
+      .send(fields)
+      .expect(200);
+    assert.equal(withIsbn.body.isbn, "9780135957059");
+    const cleared = await request(app)
+      .put(`/api/books/${id}`)
+      .set(auth())
+      .send({ ...fields, isbn: "" })
+      .expect(200);
+    assert.equal(cleared.body.isbn, "");
+    const read = await request(app)
+      .get(`/api/books/${id}`)
+      .set(auth())
+      .expect(200);
+    assert.equal(read.body.isbn, "");
+    await request(app).delete(`/api/books/${id}`).set(auth()).expect(200);
+  }
+  for (const isbn of [123, {}, "N/A", "---", "9780135957058"]) {
+    await request(app)
+      .post("/api/books")
+      .set(auth())
+      .send({ ...fields, isbn })
+      .expect(400);
+  }
+});
 test("persists records across app recreation and supports update, search, pagination", async () => {
   const secondApp = createApp();
   const read = await request(secondApp)

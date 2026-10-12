@@ -29,7 +29,7 @@ export default function AddBook() {
             setForm({
               title: data.title,
               author: data.author,
-              isbn: data.isbn,
+              isbn: data.isbn || "",
               category: data.category,
               shelf: data.shelf,
             });
@@ -82,7 +82,11 @@ export default function AddBook() {
           <div className="panel-heading">
             <div>
               <h2>Book information</h2>
-              <p>{book ? copyCode(book._id) : "All fields are required."}</p>
+              <p>
+                {book
+                  ? copyCode(book._id)
+                  : "All fields except ISBN are required."}
+              </p>
             </div>
             <BookOpen size={22} />
           </div>
@@ -115,19 +119,19 @@ export default function AddBook() {
               />
             </div>
             <div className="field">
-              <label htmlFor="isbn">ISBN</label>
+              <label htmlFor="isbn">ISBN (optional)</label>
               <input
                 id="isbn"
                 name="isbn"
                 className="form-control"
-                required
                 maxLength={24}
                 placeholder="e.g. 978-0135957059"
                 value={form.isbn}
                 onChange={change}
               />
               <small>
-                ISBN-10 or ISBN-13. Spaces and hyphens are accepted.
+                Leave blank if the book has no ISBN. If entered, use a valid
+                ISBN-10 or ISBN-13.
               </small>
             </div>
             <div className="two-fields">
@@ -153,10 +157,13 @@ export default function AddBook() {
                   className="form-control"
                   required
                   maxLength={40}
-                  placeholder="e.g. T-01"
+                  placeholder="e.g. A-01 or Shelf A, section 1"
                   value={form.shelf}
                   onChange={change}
                 />
+                <small>
+                  Where the book is kept. Use your library’s own shelf labels.
+                </small>
               </div>
             </div>
             <div className="form-footer">

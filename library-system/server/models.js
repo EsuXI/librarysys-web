@@ -27,7 +27,7 @@ const bookSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 160 },
     author: { type: String, required: true, trim: true, maxlength: 100 },
-    isbn: { type: String, required: true },
+    isbn: { type: String, default: "" },
     category: { type: String, required: true },
     shelf: { type: String, required: true, trim: true, maxlength: 40 },
     status: {

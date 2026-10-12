@@ -150,7 +150,7 @@ export default function BookInventory() {
                             </Link>
                             <small>{book.author}</small>
                             <small className="book-code">
-                              {copyCode(book._id)} · {book.isbn}
+                              {copyCode(book._id)} · {book.isbn || "No ISBN"}
                             </small>
                           </div>
                         </div>

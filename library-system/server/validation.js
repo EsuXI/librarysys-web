@@ -58,15 +58,19 @@ export function validIsbn(value) {
   return false;
 }
 export function bookFields(body) {
+  const rawIsbn = body.isbn ?? "";
+  if (typeof rawIsbn !== "string" || rawIsbn.trim().length > 24)
+    fail(400, "ISBN must be blank or a valid ISBN-10 or ISBN-13.");
+  const isbn = rawIsbn.replace(/[\s-]/g, "").toUpperCase();
+  if (rawIsbn.trim() && !validIsbn(isbn))
+    fail(400, "Enter a valid ISBN-10 or ISBN-13, or leave it blank.");
   const fields = {
     title: text(body.title, "Title", 160),
     author: text(body.author, "Author", 100),
-    isbn: text(body.isbn, "ISBN", 24).replace(/[\s-]/g, "").toUpperCase(),
+    isbn,
     category: text(body.category, "Category", 40),
     shelf: text(body.shelf, "Shelf", 40),
   };
-  if (!validIsbn(fields.isbn))
-    fail(400, "Enter a valid ISBN-10 or ISBN-13, including its check digit.");
   if (!categories.includes(fields.category))
     fail(400, "Choose a valid category.");
   return fields;
