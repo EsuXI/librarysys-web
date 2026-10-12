@@ -1,182 +1,267 @@
-// src/pages/BookInventory.jsx
 import { useState } from "react";
-
-function BookInventory({ books, onDeleteBook, onToggleBorrow }) {
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [returnModalOpen, setReturnModalOpen] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [borrowerName, setBorrowerName] = useState("");
-  
-  // 1. ADDED: State for the search bar
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleActionClick = (book) => {
-    setSelectedBook(book);
-    if (book.status === "Available") {
-      setBorrowerName(""); 
-      setCheckoutModalOpen(true);
-    } else {
-      setReturnModalOpen(true);
-    }
-  };
-
-  const handleConfirmCheckout = () => {
-    if (borrowerName.trim() === "") return; 
-    onToggleBorrow(selectedBook.id, "Borrowed", borrowerName);
-    setCheckoutModalOpen(false);
-    setSelectedBook(null);
-  };
-
-  const handleConfirmReturn = () => {
-    onToggleBorrow(selectedBook.id, "Available", "");
-    setReturnModalOpen(false);
-    setSelectedBook(null);
-  };
-
-  // 2. ADDED: Filter the books based on the search query
-  const filteredBooks = books.filter((book) => 
-    book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    book.author.toLowerCase().includes(searchQuery.toLowerCase())
+import { Link, useSearchParams } from "react-router-dom";
+import { Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
+import Modal from "react-bootstrap/Modal";
+import useApi from "../hooks/useApi";
+import api, { errorMessage } from "../api";
+import {
+  PageHeading,
+  Status,
+  BookMark,
+  Empty,
+  Loading,
+  ErrorState,
+  SearchField,
+  Pager,
+} from "../components/UI";
+import LoanModal from "../components/LoanModal";
+import { categories, copyCode, bookStatus } from "../utils";
+export default function BookInventory() {
+  const [params, setParams] = useSearchParams();
+  const search = params.get("search") || "",
+    status = params.get("status") || "",
+    category = params.get("category") || "";
+  const { data, loading, error, reload } = useApi(
+    `/books?${params.toString()}`,
   );
-
+  const [selected, setSelected] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [actionError, setActionError] = useState("");
+  function filter(key, value) {
+    const next = new URLSearchParams(params);
+    value ? next.set(key, value) : next.delete(key);
+    next.delete("page");
+    setParams(next, { replace: true });
+  }
+  function saved(message) {
+    setNotice(message);
+    reload();
+  }
+  async function remove() {
+    setBusy(true);
+    setActionError("");
+    try {
+      await api.delete(`/books/${deleting._id}`);
+      setDeleting(null);
+      saved("Book deleted successfully.");
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <div className="max-w-6xl mx-auto mt-8 bg-white p-8 rounded-xl shadow-sm border border-gray-100 relative">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Library Inventory</h2>
-        <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full">
-          {/* UPDATED: Now shows filtered count instead of total books */}
-          {filteredBooks.length} Books
-        </span>
-      </div>
-
-      {/* 3. ADDED: The Search Input field right above the table */}
-      <div className="mb-6">
-        <input 
-          type="text" 
-          placeholder="Search by title or author..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-        />
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b-2 border-gray-200 bg-gray-50">
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600">ID</th>
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600">Title</th>
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600">Author</th>
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600">Borrower</th>
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* 4. UPDATED: Changed books.map to filteredBooks.map */}
-            {filteredBooks.map((book) => (
-              <tr key={book.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="py-3 px-4 text-sm text-gray-500">{book.id}</td>
-                <td className="py-3 px-4 text-sm font-medium text-gray-900">{book.title}</td>
-                <td className="py-3 px-4 text-sm text-gray-600">{book.author}</td>
-                <td className="py-3 px-4 text-sm">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    book.status === "Available" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                  }`}>
-                    {book.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-600 italic">
-                  {book.borrower || "-"}
-                </td>
-                <td className="py-3 px-4 text-sm text-right space-x-3">
-                  <button 
-                    onClick={() => handleActionClick(book)}
-                    className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
-                  >
-                    {book.status === "Available" ? "Checkout" : "Return"}
-                  </button>
-                  <button 
-                    onClick={() => onDeleteBook(book.id)}
-                    className="text-red-600 hover:text-red-800 font-medium transition-colors"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
+    <>
+      <PageHeading
+        title="Book inventory"
+        subtitle="A home for every book in your collection."
+        action={
+          <Link to="/add-book" className="btn btn-primary">
+            <Plus size={18} />
+            Add a book
+          </Link>
+        }
+      />
+      {notice && (
+        <div className="alert alert-success alert-dismissible" role="status">
+          {notice}
+          <button
+            className="btn-close"
+            aria-label="Dismiss notification"
+            onClick={() => setNotice("")}
+          />
+        </div>
+      )}
+      <section className="panel inventory-panel">
+        <div className="inventory-heading">
+          <h2>
+            Your collection{" "}
+            <span className="count-pill">
+              {data?.total ?? "…"} {data?.total === 1 ? "copy" : "copies"}
+            </span>
+          </h2>
+          <span className="muted">One record per physical copy</span>
+        </div>
+        <div className="filter-bar">
+          <SearchField
+            value={search}
+            onChange={(value) => filter("search", value)}
+            placeholder="Search title, author, ISBN, or shelf…"
+          />
+          <select
+            className="form-select"
+            aria-label="Filter by category"
+            value={category}
+            onChange={(e) => filter("category", e.target.value)}
+          >
+            <option value="">All categories</option>
+            {categories.map((value) => (
+              <option key={value}>{value}</option>
             ))}
-          </tbody>
-        </table>
-        
-        {/* ADDED: Show a message if no books match the search */}
-        {filteredBooks.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No books found matching your search.
-          </div>
-        )}
-      </div>
-
-      {/* --- CUSTOM CHECKOUT MODAL --- */}
-      {checkoutModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Checkout Book</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Who is borrowing <span className="font-semibold">"{selectedBook?.title}"</span>?
-            </p>
-            <input 
-              type="text" 
-              value={borrowerName}
-              onChange={(e) => setBorrowerName(e.target.value)}
-              placeholder="Enter borrower name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
-              autoFocus
+          </select>
+          <select
+            className="form-select"
+            aria-label="Filter by availability"
+            value={status}
+            onChange={(e) => filter("status", e.target.value)}
+          >
+            <option value="">All statuses</option>
+            {["Available", "Borrowed", "Overdue"].map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+          {(search || status || category) && (
+            <button className="btn btn-light" onClick={() => setParams({})}>
+              Clear
+            </button>
+          )}
+        </div>
+        {loading ? (
+          <Loading />
+        ) : error ? (
+          <ErrorState message={error} retry={reload} />
+        ) : (
+          <>
+            <div className="table-responsive">
+              <table className="table library-table">
+                <thead>
+                  <tr>
+                    <th>BOOK DETAILS</th>
+                    <th>CATEGORY</th>
+                    <th>SHELF</th>
+                    <th>STATUS</th>
+                    <th className="text-end">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.books.map((book) => (
+                    <tr key={book._id}>
+                      <td>
+                        <div className="table-book">
+                          <BookMark category={book.category} />
+                          <div>
+                            <Link
+                              to={`/books/${book._id}/edit`}
+                              className="book-title"
+                            >
+                              {book.title}
+                            </Link>
+                            <small>{book.author}</small>
+                            <small className="book-code">
+                              {copyCode(book._id)} · {book.isbn}
+                            </small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="category-tag">{book.category}</span>
+                      </td>
+                      <td className="shelf-cell">{book.shelf}</td>
+                      <td>
+                        <Status value={bookStatus(book)} />
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          <button
+                            className={`btn btn-sm ${book.status === "Available" ? "btn-outline-primary" : "btn-primary"}`}
+                            onClick={() => setSelected(book)}
+                          >
+                            {book.status === "Available"
+                              ? "Check out"
+                              : "Return"}
+                            <ArrowUpRight size={13} />
+                          </button>
+                          <Link
+                            to={`/books/${book._id}/edit`}
+                            className="icon-button"
+                            aria-label={`Edit ${book.title}`}
+                          >
+                            <Pencil size={16} />
+                          </Link>
+                          <button
+                            className="icon-button delete-button"
+                            disabled={book.loans.length > 0}
+                            title={
+                              book.loans.length
+                                ? "Loan history must be preserved"
+                                : "Delete book"
+                            }
+                            aria-label={`Delete ${book.title}`}
+                            onClick={() => {
+                              setActionError("");
+                              setDeleting(book);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!data.books.length && (
+              <Empty
+                title={
+                  search || status || category
+                    ? "No matching books"
+                    : "Your shelves are ready"
+                }
+              >
+                {search || status || category
+                  ? "Try another search or clear your filters."
+                  : "Add your first book to start your library."}
+              </Empty>
+            )}
+            <Pager
+              data={data}
+              onPage={(page) => {
+                const next = new URLSearchParams(params);
+                next.set("page", page);
+                setParams(next);
+              }}
             />
-            <div className="flex justify-end space-x-2">
-              <button 
-                onClick={() => setCheckoutModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleConfirmCheckout}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
+      </section>
+      {selected && (
+        <LoanModal
+          book={selected}
+          onClose={() => setSelected(null)}
+          onSaved={saved}
+        />
       )}
-
-      {/* --- CUSTOM RETURN MODAL --- */}
-      {returnModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Return Book</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Is <span className="font-semibold">{selectedBook?.borrower}</span> returning <span className="font-semibold">"{selectedBook?.title}"</span>?
-            </p>
-            <div className="flex justify-end space-x-2">
-              <button 
-                onClick={() => setReturnModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleConfirmReturn}
-                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
-              >
-                Confirm Return
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Modal
+        show={Boolean(deleting)}
+        onHide={() => !busy && setDeleting(null)}
+        centered
+      >
+        <Modal.Header closeButton={!busy}>
+          <Modal.Title>Delete this book?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Remove <strong>{deleting?.title}</strong> from your inventory? This
+            action cannot be undone.
+          </p>
+          {actionError && <ErrorState message={actionError} />}
+        </Modal.Body>
+        <Modal.Footer>
+          <button
+            className="btn btn-light"
+            disabled={busy}
+            onClick={() => setDeleting(null)}
+          >
+            Cancel
+          </button>
+          <button className="btn btn-danger" disabled={busy} onClick={remove}>
+            {busy ? "Deleting…" : "Delete book"}
+          </button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 }
-
-export default BookInventory;

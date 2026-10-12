@@ -1,74 +1,222 @@
-// src/pages/AddBook.jsx
-import { useState } from "react";
-
-function AddBook({ onAddBook }) {
-  const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("");
-  const [isbn, setIsbn] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault(); 
-    
-    const newBook = { title, author, isbn };
-    onAddBook(newBook);
-    
-    alert(`Success! "${title}" has been added to the library.`);
-    
-    setTitle("");
-    setAuthor("");
-    setIsbn("");
-  };
-
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, BookOpen, Check, Info } from "lucide-react";
+import api, { errorMessage } from "../api";
+import { PageHeading, ErrorState, Loading } from "../components/UI";
+import { categories, copyCode, formatDate } from "../utils";
+export default function AddBook() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    title: "",
+    author: "",
+    isbn: "",
+    category: "Technology",
+    shelf: "",
+  });
+  const [book, setBook] = useState(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    if (id)
+      api
+        .get(`/books/${id}`)
+        .then(({ data }) => {
+          if (active) {
+            setBook(data);
+            setForm({
+              title: data.title,
+              author: data.author,
+              isbn: data.isbn,
+              category: data.category,
+              shelf: data.shelf,
+            });
+          }
+        })
+        .catch((err) => {
+          if (active) setError(errorMessage(err));
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    return () => {
+      active = false;
+    };
+  }, [id]);
+  function change(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      if (id) await api.put(`/books/${id}`, form);
+      else await api.post("/books", form);
+      navigate("/inventory");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (loading) return <Loading />;
   return (
-    <div className="max-w-2xl mx-auto mt-8 bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Add a New Book</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Book Title</label>
-          <input 
-            type="text" 
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-            placeholder="e.g., The Pragmatic Programmer"
-            required 
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
-          <input 
-            type="text" 
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-            placeholder="e.g., Andrew Hunt"
-            required 
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">ISBN</label>
-          <input 
-            type="text" 
-            value={isbn}
-            onChange={(e) => setIsbn(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-            placeholder="e.g., 978-0135957059"
-            required 
-          />
-        </div>
-
-        <button 
-          type="submit" 
-          className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors mt-4"
-        >
-          Save Book
-        </button>
-      </form>
-    </div>
+    <>
+      <Link to="/inventory" className="back-link">
+        <ArrowLeft size={16} />
+        Back to inventory
+      </Link>
+      <PageHeading
+        title={id ? "Edit book details" : "A new book, a new possibility."}
+        subtitle={
+          id
+            ? "Keep your catalog accurate and up to date."
+            : "Add a physical copy to your library collection."
+        }
+      />
+      <div className="form-layout">
+        <section className="panel book-form">
+          <div className="panel-heading">
+            <div>
+              <h2>Book information</h2>
+              <p>{book ? copyCode(book._id) : "All fields are required."}</p>
+            </div>
+            <BookOpen size={22} />
+          </div>
+          {error && <ErrorState message={error} />}
+          <form onSubmit={submit}>
+            <div className="field">
+              <label htmlFor="title">Book title</label>
+              <input
+                id="title"
+                name="title"
+                className="form-control"
+                required
+                maxLength={160}
+                placeholder="e.g. The Pragmatic Programmer"
+                value={form.title}
+                onChange={change}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="author">Author</label>
+              <input
+                id="author"
+                name="author"
+                className="form-control"
+                required
+                maxLength={100}
+                placeholder="e.g. David Thomas & Andrew Hunt"
+                value={form.author}
+                onChange={change}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="isbn">ISBN</label>
+              <input
+                id="isbn"
+                name="isbn"
+                className="form-control"
+                required
+                maxLength={24}
+                placeholder="e.g. 978-0135957059"
+                value={form.isbn}
+                onChange={change}
+              />
+              <small>
+                ISBN-10 or ISBN-13. Spaces and hyphens are accepted.
+              </small>
+            </div>
+            <div className="two-fields">
+              <div className="field">
+                <label htmlFor="category">Category</label>
+                <select
+                  id="category"
+                  name="category"
+                  className="form-select"
+                  value={form.category}
+                  onChange={change}
+                >
+                  {categories.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="shelf">Shelf location</label>
+                <input
+                  id="shelf"
+                  name="shelf"
+                  className="form-control"
+                  required
+                  maxLength={40}
+                  placeholder="e.g. T-01"
+                  value={form.shelf}
+                  onChange={change}
+                />
+              </div>
+            </div>
+            <div className="form-footer">
+              <Link to="/inventory" className="btn btn-light">
+                Cancel
+              </Link>
+              <button
+                className="btn btn-primary"
+                disabled={busy || (Boolean(id) && !book)}
+              >
+                <Check size={17} />
+                {busy ? "Saving…" : id ? "Save changes" : "Save book"}
+              </button>
+            </div>
+          </form>
+        </section>
+        <aside className="form-aside">
+          <div className="info-card">
+            <Info size={22} />
+            <h3>A few helpful notes</h3>
+            <p>
+              Each record represents one physical copy. Add another record if
+              your library has multiple copies of the same title.
+            </p>
+            <p>
+              New copies are available immediately. Check them out from the
+              inventory when a reader borrows them.
+            </p>
+            <p>
+              The ISBN identifies the edition. The copy ID identifies the
+              individual book in your library.
+            </p>
+          </div>
+          {book && (
+            <div className="info-card">
+              <h3>Loan history</h3>
+              {book.loans.length ? (
+                book.loans
+                  .slice()
+                  .reverse()
+                  .map((loan) => (
+                    <div className="history-item" key={loan._id}>
+                      <strong>{loan.borrower}</strong>
+                      <small>
+                        {loan.borrowerId} · {formatDate(loan.borrowedAt)}
+                      </small>
+                      <small>
+                        {loan.returnedAt
+                          ? `Returned ${formatDate(loan.returnedAt)}`
+                          : `Due ${formatDate(loan.dueDate)}`}
+                      </small>
+                    </div>
+                  ))
+              ) : (
+                <p>No loans recorded for this copy yet.</p>
+              )}
+            </div>
+          )}
+        </aside>
+      </div>
+    </>
   );
 }
-
-export default AddBook;
